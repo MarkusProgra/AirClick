@@ -1,6 +1,6 @@
-// Renders the AirClick icon — minimal: near-black squircle, a white outlined
-// mouse capsule with a scroll slot, and a single air-wave stream rising off
-// it. Outputs a 1024px PNG: `swift assets/make-icon.swift assets/icon.png`
+// Renders the AirClick icon — ultra-minimal: a flat near-black squircle with
+// a single horizontal curvy line (the air). One smooth wave, nothing else.
+// `swift assets/make-icon.swift assets/icon.png`
 import CoreGraphics
 import ImageIO
 import Foundation
@@ -10,37 +10,27 @@ let ctx = CGContext(data: nil, width: Int(S), height: Int(S), bitsPerComponent: 
                     bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
 
-// Flat near-black squircle, no gradient, no glow.
+// Flat near-black squircle.
 let black = CGColor(srgbRed: 0x0a / 255, green: 0x0b / 255, blue: 0x0d / 255, alpha: 1)
 ctx.setFillColor(black)
 ctx.addPath(CGPath(roundedRect: CGRect(x: 0, y: 0, width: S, height: S),
                    cornerWidth: 228, cornerHeight: 228, transform: nil))
 ctx.fillPath()
 
+// The air: one white wavering line flowing horizontally across the center.
+// The two halves share a tangent at the joint, so the bend is seamless.
 let white = CGColor(srgbRed: 0.96, green: 0.97, blue: 0.98, alpha: 1)
 ctx.setStrokeColor(white)
-ctx.setLineWidth(26)
+ctx.setLineWidth(34)
 ctx.setLineCap(.round)
 ctx.setLineJoin(.round)
 
-// Mouse capsule, drawn as an outline, lower-left of center.
-let mouse = CGPath(roundedRect: CGRect(x: 268, y: 198, width: 322, height: 226),
-                   cornerWidth: 113, cornerHeight: 113, transform: nil)
-ctx.addPath(mouse)
-ctx.strokePath()
-
-// Scroll slot: one short line inside the top-center of the capsule.
-ctx.addLines(between: [CGPoint(x: 429, y: 396), CGPoint(x: 429, y: 336)])
-ctx.strokePath()
-
-// The air: a single wave rising off the top-right shoulder of the mouse.
-// The two curves share a tangent at the joint, so the stream bends smoothly.
 let wave = CGMutablePath()
-wave.move(to: CGPoint(x: 498, y: 474))
-wave.addCurve(to: CGPoint(x: 618, y: 652),
-              control1: CGPoint(x: 568, y: 470), control2: CGPoint(x: 606, y: 560))
-wave.addCurve(to: CGPoint(x: 806, y: 812),
-              control1: CGPoint(x: 642, y: 747), control2: CGPoint(x: 716, y: 800))
+wave.move(to: CGPoint(x: 292, y: 545))
+wave.addCurve(to: CGPoint(x: 512, y: 545),
+              control1: CGPoint(x: 352, y: 399), control2: CGPoint(x: 412, y: 399))
+wave.addCurve(to: CGPoint(x: 732, y: 545),
+              control1: CGPoint(x: 612, y: 691), control2: CGPoint(x: 672, y: 691))
 ctx.addPath(wave)
 ctx.strokePath()
 
