@@ -76,7 +76,6 @@ final class GestureEngine: NSObject {
   private var okAcc: Double = 0
   private var failAcc: Double = 0
   private let holdMs: Double = 1400
-  private var anchor = CGPoint.zero
 
   private var smoothX: CGFloat?
   private var smoothY: CGFloat?
@@ -88,29 +87,31 @@ final class GestureEngine: NSObject {
   private var lastBeat: Double = 0
   private var moveCount = 0
 
-  // Pointer feel: a slow hand takes tiny, precise steps; a fast hand sweeps
-  // across the screen. Gain morphs with hand speed between the anchors.
+  // Pointer feel, mouse-style (relative): each frame the hand's movement is
+  // scaled by a speed-dependent gain and added to wherever the pointer is.
+  // Slow hand → tiny precise steps; fast hand → sweeps; pausing just holds
+  // the pointer still. There is no anchor, so nothing can get pulled or
+  // snapped anywhere, and a gain transition can never jump the pointer.
   private let gainLow: CGFloat = 0.32
   private let gainHigh: CGFloat = 2.6
   private let gainV0: CGFloat = 0.15 // hand speed in normalized screen units/s
   private let gainV1: CGFloat = 1.0
-  // Any deliberate pinch closure (even a gentle one) freezes the pointer so
+  // A fast pinch closure (the deliberate tap) briefly freezes the pointer so
   // the press lands where you aim; slow drift and held drags never freeze.
-  private let closeFreezeV: CGFloat = 0.7 // pinch-ratio units/s
-  private let closeNear: CGFloat = 0.58   // closure counts inside this band
-  private let freezeMs: Double = 130
+  private let closeFreezeV: CGFloat = 0.9 // pinch-ratio units/s
+  private let closeNear: CGFloat = 0.52   // fast closure counts inside this band
+  private let freezeMs: Double = 120
 
   private var velSm: CGFloat?
   private var lastCursor: CGPoint?
   private var lPinchPrev: CGFloat?
   private var rPinchPrev: CGFloat?
   private var freezeUntil: Double = 0
-  private var wasFrozen = false
 
-  private let smoothK: CGFloat = 0.45
-  private let dead: CGFloat = 2.5
-  private let pinchOn: CGFloat = 0.36
-  private let pinchOff: CGFloat = 0.60
+  private let dead: CGFloat = 0.6 // min step (px) that suppresses idle jitter
+  // Click needs a near-full close; hold-drag keeps it closed, open releases.
+  private let pinchOn: CGFloat = 0.28
+  private let pinchOff: CGFloat = 0.54
   private let tapCooldown: Double = 250
   private let handLostMs: Double = 1200
 
@@ -166,11 +167,16 @@ final class GestureEngine: NSObject {
     notifyFrame()
   }
 
+  /// Rescue hatch: teleport the pointer back to the exact center of the
+  /// screen (relative motion has no anchor, so runaway drift is corrected
+  /// only by moving the hand — this gives an instant way back).
   func recenter() {
-    guard phase == .active, let p = cursorPoint else { return }
-    anchor = p
-    smoothX = nil
-    smoothY = nil
+    guard phase == .active else { return }
+    let b = CGDisplayBounds(CGMainDisplayID())
+    smoothX = b.midX
+    smoothY = b.midY
+    postMove()
+    probe("recenter")
     notifyFrame()
   }
 
@@ -273,7 +279,6 @@ final class GestureEngine: NSObject {
         probe("calib centered=\(centered) spread=\(spread) progress=\(Int(progress * 100))")
       }
       if okAcc >= holdMs {
-        anchor = cursor
         phase = .active
         smoothX = nil
         smoothY = nil
@@ -283,7 +288,6 @@ final class GestureEngine: NSObject {
         lPinchPrev = nil
         rPinchPrev = nil
         freezeUntil = 0
-        wasFrozen = false
         probe("connect")
         if let f = onConnected {
           DispatchQueue.main.async(execute: f)
@@ -295,6 +299,10 @@ final class GestureEngine: NSObject {
       let dtA = lastFrameMs > 0 ? min(100, max(5, now - lastFrameMs)) : 16
       let lPinch = dist(thumbTip, idxTip) / palm
       let rPinch = dist(thumbTip, midTip) / palm
+
+      // Hand movement this frame, captured before lastCursor is updated.
+      let handDx = lastCursor != nil ? cursor.x - lastCursor!.x : 0
+      let handDy = lastCursor != nil ? cursor.y - lastCursor!.y : 0
 
       // Hand speed (normalized units/s), smoothed — drives the gain curve.
       if let last = lastCursor {
@@ -317,26 +325,24 @@ final class GestureEngine: NSObject {
       rPinchPrev = rPinch
 
       let frozen = now < freezeUntil
-      if wasFrozen && !frozen {
-        anchor = cursor // freeze lifting re-anchors: no jump on resume
-      }
-      wasFrozen = frozen
 
       if !frozen {
-        // Adaptive gain: slow hand → precise micro-steps, fast hand → sweeps.
+        // Mouse-style relative motion: scale just this frame's hand movement
+        // by the adaptive gain (slow hand → micro-steps, fast hand → sweeps)
+        // and add it to wherever the pointer already is. No anchor — pausing
+        // holds the pointer exactly still.
+        if smoothX == nil || smoothY == nil {
+          smoothX = b.midX
+          smoothY = b.midY
+        }
         let t = min(1, max(0, ((velSm ?? 0) - gainV0) / (gainV1 - gainV0)))
         let easing = t * t * (3 - 2 * t)
         let g = gainLow + easing * (gainHigh - gainLow)
-        let tx = b.midX + (cursor.x - anchor.x) * b.width * g
-        let ty = b.midY + (cursor.y - anchor.y) * b.height * g
+        let tx = smoothX! + handDx * b.width * g
+        let ty = smoothY! + handDy * b.height * g
         let cx = min(max(0, tx), b.width - 1)
         let cy = min(max(0, ty), b.height - 1)
-        if let sx = smoothX, let sy = smoothY {
-          if abs(cx - sx) > dead || abs(cy - sy) > dead {
-            smoothX = sx + (cx - sx) * smoothK
-            smoothY = sy + (cy - sy) * smoothK
-          }
-        } else {
+        if abs(cx - smoothX!) > dead || abs(cy - smoothY!) > dead {
           smoothX = cx
           smoothY = cy
         }
@@ -393,7 +399,6 @@ final class GestureEngine: NSObject {
       lPinchPrev = nil
       rPinchPrev = nil
       freezeUntil = 0
-      wasFrozen = false
     }
     handVisible = false
     checks = (hand: false, centered: false, spread: false)
