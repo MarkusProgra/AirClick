@@ -33,7 +33,7 @@ from **code you can read**:
   it (CC BY-NC 4.0). What's not allowed: reselling the work itself. A new way
   to touch computing should be born **for everyone.**
 
-## For developers — the code is the flex
+## For developers, have fun with the engineering
 
 The entire desktop app — camera pipeline, 21-joint Vision hand tracking, the
 gesture state machine, CGEvent injection — is **one Swift file**. No
