@@ -1,8 +1,34 @@
 # AirClick
 
-Control your **whole Mac** with your bare hand — no hardware, no cloud.
-Pinch to click, pinch and hold to drag, thumb+middle to right-click.
-All hand tracking runs on-device (Apple Vision, 21 hand joints).
+<div align="center">
+
+### The next input revolution isn't on a screen — it's in the air.
+
+**Control your whole Mac with your bare hand.**
+Pinch to click · pinch and hold to drag · thumb + middle to right-click.
+No gloves, no rings, no hardware, no cloud — just the camera you already own.
+
+</div>
+
+## This is touch, reinvented
+
+Every revolution in human input did the same thing: it moved the interface
+closer to the body. The mouse put pointing on every desk. Multi-touch put
+the finger on the glass. **AirClick is the next step — it takes the very same
+pinch your fingers already know (press, hold, drag, right-click) and lifts it
+off the screen: into the air, onto every window, on every app on your Mac.**
+
+Not an accessibility bolt-on. Not a gimmick demo. A **general-purpose,
+system-wide pointing device** running 100% on-device (Apple Vision, 21 hand
+joints — nothing ever leaves your machine), set up in **one command**, built
+from **code you can read**:
+
+- 🙌 **Zero hardware** — your hand is the device. Any built-in or external webcam.
+- 🖥 **Zero boundaries** — it moves the *real* system pointer, so it works
+  wherever a mouse works: browsers, editors, design tools, games, menus.
+- 🔒 **Zero cloud** — no account, no telemetry, no uploads. Ever.
+- 📖 **Zero barriers** — fully open source. Clone it, build it, fork it, build
+  your own ideas on top. A new way to touch computing should be born **for everyone.**
 
 ## Desktop app (macOS) — the real thing
 
