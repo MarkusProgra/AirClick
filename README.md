@@ -1,6 +1,6 @@
 # AirClick
 
-Control a web page — or your **whole Mac** — with your bare hand.
+Control a web page — or your **whole Mac** — with your bare hand. 
 
 ## Quick Start
 
