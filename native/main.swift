@@ -792,9 +792,14 @@ final class HUDView: NSView {
 
 final class ConnectToast {
   private var panel: NSPanel!
+  private var titleText: CATextLayer!
+  private var subText: CATextLayer!
 
-  func show() {
+  func show(trusted: Bool) {
     if panel == nil { build() }
+    titleText.string = trusted ? "Connected!" : "Almost connected"
+    subText.string = trusted ? "Pinch = click · pinch & hold = drag"
+                             : "Grant Accessibility to move the mouse"
     // Top-right, tucked under the menu bar, like a system notification.
     if let screen = NSScreen.main?.frame {
       panel.setFrameOrigin(NSPoint(x: screen.maxX - 232 - 20, y: screen.maxY - 30 - 72))
@@ -846,23 +851,23 @@ final class ConnectToast {
       l.addSublayer(dot)
 
       let scale = NSScreen.main?.backingScaleFactor ?? 2
-      let title = CATextLayer()
-      title.string = "Connected!"
-      title.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-      title.fontSize = 14
-      title.foregroundColor = NSColor(white: 1, alpha: 0.95).cgColor
-      title.contentsScale = scale
-      title.frame = CGRect(x: 40, y: h - 16 - 18, width: w - 50, height: 18)
-      l.addSublayer(title)
+      titleText = CATextLayer()
+      titleText.string = "Connected!" // overwritten by show(trusted:)
+      titleText.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+      titleText.fontSize = 14
+      titleText.foregroundColor = NSColor(white: 1, alpha: 0.95).cgColor
+      titleText.contentsScale = scale
+      titleText.frame = CGRect(x: 40, y: h - 16 - 18, width: w - 50, height: 18)
+      l.addSublayer(titleText)
 
-      let sub = CATextLayer()
-      sub.string = "Pinch = click · pinch & hold = drag"
-      sub.font = NSFont.systemFont(ofSize: 10.5, weight: .regular)
-      sub.fontSize = 10.5
-      sub.foregroundColor = NSColor(white: 1, alpha: 0.55).cgColor
-      sub.contentsScale = scale
-      sub.frame = CGRect(x: 40, y: h - 16 - 18 - 20, width: w - 50, height: 16)
-      l.addSublayer(sub)
+      subText = CATextLayer()
+      subText.string = "Pinch = click · pinch & hold = drag" // overwritten by show(trusted:)
+      subText.font = NSFont.systemFont(ofSize: 10.5, weight: .regular)
+      subText.fontSize = 10.5
+      subText.foregroundColor = NSColor(white: 1, alpha: 0.55).cgColor
+      subText.contentsScale = scale
+      subText.frame = CGRect(x: 40, y: h - 16 - 18 - 20, width: w - 50, height: 16)
+      l.addSublayer(subText)
     }
     panel.contentView = view
   }
@@ -916,7 +921,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       self?.hud.refresh()
     }
     engine.onConnected = { [weak self] in
-      self?.toast.show()
+      guard let self else { return }
+      self.toast.show(trusted: self.engine.trusted)
     }
 
     setupStatusItem()
@@ -938,6 +944,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       if t != self.engine.trusted {
         self.engine.setTrusted(t)
         self.panel.level = t ? .floating : .normal
+        if t, self.engine.phase == .active {
+          self.toast.show(trusted: true) // the real "Connected!" when trust lands
+        }
       }
     }
 
