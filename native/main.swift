@@ -90,13 +90,14 @@ final class GestureEngine: NSObject {
 
   // Pointer feel: a slow hand takes tiny, precise steps; a fast hand sweeps
   // across the screen. Gain morphs with hand speed between the anchors.
-  private let gainLow: CGFloat = 0.55
+  private let gainLow: CGFloat = 0.32
   private let gainHigh: CGFloat = 2.6
-  private let gainV0: CGFloat = 0.12 // hand speed in normalized screen units/s
+  private let gainV0: CGFloat = 0.15 // hand speed in normalized screen units/s
   private let gainV1: CGFloat = 1.0
-  // A fast pinch closure freezes the pointer so the press lands where you aim.
-  private let closeFreezeV: CGFloat = 1.5 // pinch-ratio units/s
-  private let closeNear: CGFloat = 0.5    // closure only counts inside this band
+  // Any deliberate pinch closure (even a gentle one) freezes the pointer so
+  // the press lands where you aim; slow drift and held drags never freeze.
+  private let closeFreezeV: CGFloat = 0.7 // pinch-ratio units/s
+  private let closeNear: CGFloat = 0.58   // closure counts inside this band
   private let freezeMs: Double = 130
 
   private var velSm: CGFloat?

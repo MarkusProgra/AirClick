@@ -34,10 +34,11 @@ thumb tip and index tip, so pinching doesn't shift the cursor. Gestures:
 
 - **Pinch thumb + index** — left press; **keep it pinched to drag**; open to release.
 - **Pinch thumb + middle** — right press/drag/release, same hold mechanic.
-- **Pointer feel** — a slow hand takes tiny, precise steps; a fast hand sweeps
-  across the screen (velocity-adaptive gain).
-- **Pinch-closure freeze** — when the fingers close fast, the pointer holds
-  still so the press lands where you aimed instead of drifting with the motion.
+- **Pointer feel** — a slow hand takes very small, precise steps; a fast hand
+  sweeps across the screen (velocity-adaptive gain).
+- **Pinch-closure freeze** — when the fingers deliberately tap together, the
+  pointer holds still so the press lands where you aimed instead of drifting
+  with the motion.
 
 Rebuild with `native/build.sh`, launch with `open native/AirClick.app`.
 
