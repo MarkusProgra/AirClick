@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="assets/icon.png" width="128" alt="AirClick icon" />
+
 ### The next input revolution isn't on a screen — it's in the air.
 
 **Control your whole Mac with your bare hand.**
@@ -29,6 +31,37 @@ from **code you can read**:
 - 🔒 **Zero cloud** — no account, no telemetry, no uploads. Ever.
 - 📖 **Zero barriers** — fully open source. Clone it, build it, fork it, build
   your own ideas on top. A new way to touch computing should be born **for everyone.**
+
+## For developers — the code is the flex
+
+The entire desktop app — camera pipeline, 21-joint Vision hand tracking, the
+gesture state machine, CGEvent injection — is **one Swift file**. No
+frameworks. No packages. One `swiftc` command and you're holding an app that
+drives your mouse. And inside that file is a stack of interaction engineering
+that actually took the work:
+
+- **Pinch detection done statistically** — distances are ratios to the palm
+  width (hand size- and distance-to-camera invariant), with hysteresis
+  (0.28 ↔ 0.54), transition debounce and button **mutual exclusion**, so a
+  jittery hand can't chatter clicks or crossfire right-presses mid-drag.
+- **Mouse physics, reimplemented** — pointer motion is integrated frame by
+  frame (mouse-style relative), each step scaled by a smoothstep gain curve
+  over the hand's smoothed velocity (0.32× in fine mode → 2.6× sweep). No
+  anchors, no snapping: pausing holds the pointer *perfectly* still.
+- **The tap-freeze** — a closure-velocity detector notices a deliberate
+  pinch tap and freezes the cursor for that instant, so the press lands
+  exactly where you aimed. The press is still evaluated during the freeze.
+- **Crash-safe by invariant** — every teardown path (hand lost >1.2 s,
+  recalibrate, camera off) releases any held buttons. The system pointer
+  can never be left stuck down.
+- **TCC knowledge baked in** — the Accessibility grant, its cdhash pitfall,
+  and the certificate-based fix ship as a script you run once.
+
+The web demo does the same tracking in the browser: React 19 + MediaPipe
+Tasks-Vision, synthetic pointer events with `elementFromPoint` targeting.
+
+One file, zero deps, and the pointer physics is the hard-won part.
+**Read it in one sitting and steal the good bits.** (`native/main.swift`)
 
 ## Desktop app (macOS) — the real thing
 

@@ -6,6 +6,8 @@
   <string>AirClick</string>
   <key>CFBundleDisplayName</key>
   <string>AirClick</string>
+  <key>CFBundleIconFile</key>
+  <string>AirClick</string>
   <key>CFBundleIdentifier</key>
   <string>com.markus.airclick</string>
   <key>CFBundleVersion</key>

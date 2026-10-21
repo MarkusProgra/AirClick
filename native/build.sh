@@ -15,8 +15,9 @@ IDENT="AirClick Dev"
 if ! security find-identity -p codesigning -v 2>/dev/null | grep -q "\"$IDENT\""; then
   IDENT="-"
 fi
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 swiftc -O -o "$APP/Contents/MacOS/AirClick" main.swift
 cp Info.plist "$APP/Contents/Info.plist"
+cp AirClick.icns "$APP/Contents/Resources/"
 codesign --force --sign "$IDENT" "$APP"
 echo "Built $APP (signed: $IDENT) — launch with: open $APP"
