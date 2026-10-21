@@ -1,50 +1,64 @@
 # AirClick
 
-Control a web page — or your **whole Mac** — with your bare hand. 
+Control your **whole Mac** with your bare hand — no hardware, no cloud.
+Pinch to click, pinch and hold to drag, thumb+middle to right-click.
+All hand tracking runs on-device (Apple Vision, 21 hand joints).
 
-## Quick Start
+## Desktop app (macOS) — the real thing
 
-**Web app** (in-page virtual cursor):
+```bash
+git clone https://github.com/MarkusProgra/AirClick.git
+cd AirClick/native
+./build.sh        # compiles + signs AirClick.app (needs Xcode Command Line Tools)
+open AirClick.app
+```
+
+No Xcode? macOS will offer to install the tools on first compile, or run
+`xcode-select --install` yourself.
+
+**First run — two permissions:**
+
+1. **Camera** — allowed via the standard prompt. Hand tracking stays on-device.
+2. **Accessibility** — System Settings → Privacy & Security → Accessibility →
+   switch **AirClick** on. Without it macOS silently ignores every mouse
+   movement and click, and the HUD banner keeps telling you so.
+
+**Use it:**
+
+- **Calibrate** — hold your hand centered in view, fingers spread, ~1.5 s.
+- **Pinch thumb + index** — left press; **stay pinched to drag**; open to release.
+- **Pinch thumb + middle** — right press/drag/release, same hold mechanic.
+- The cursor sits at the **pinch point** (midway between thumb and index tip),
+  so pinching never shifts it.
+- **Pointer feel** — a slow hand (fine mode) moves the pointer only a fraction,
+  for precise aiming; a fast hand sweeps across the whole screen.
+- **Tap freeze** — when your fingers deliberately tap together, the pointer
+  holds still for that moment, so the press lands exactly where you aimed.
+- Menu-bar panel: Recalibrate / Re-center / Show; Re-center teleports the
+  pointer to screen center if you need a rescue.
+
+**Make the grant permanent (optional, once):**
+
+```bash
+bash make-signing-cert.sh   # creates a self-signed "AirClick Dev" identity
+open AirClick.app           # then toggle Accessibility OFF→ON one last time
+```
+
+After that, every rebuild keeps its Accessibility grant — ad-hoc builds
+(rebuilt without the identity) re-key it to the binary and you'd re-toggle
+each time. `build.sh` picks the identity up automatically.
+
+## Web app (demo) — in-page cursor only
 
 ```bash
 npm install
 npm run dev      # → http://localhost:5174
 ```
 
-**Desktop app** (real system mouse):
-
-```bash
-cd native
-./build.sh               # builds + signs AirClick.app
-open AirClick.app
-```
-
-On first run, grant **Camera**; grant **Accessibility** when macOS asks
-(System Settings → Privacy & Security → Accessibility). Recommended once:
-`bash native/make-signing-cert.sh` signs the app with a stable self-signed
-identity, so the Accessibility grant survives every rebuild (ad-hoc builds
-re-check it, and you'd have to re-toggle after each rebuild).
-
-## Desktop app (real mouse control)
-
-`native/AirClick.app` is a standalone macOS app that drives the **real system pointer**:
-same hand tracking (Vision framework, 21 joints), same calibration pose (hand centered +
-fingers spread ~1.5 s). The pointer sits at the **pinch point** — the midpoint between your
-thumb tip and index tip, so pinching doesn't shift the cursor. Gestures:
-
-- **Pinch thumb + index** — left press; **keep it pinched to drag**; open to release.
-- **Pinch thumb + middle** — right press/drag/release, same hold mechanic.
-- **Pointer feel** — a slow hand takes very small, precise steps; a fast hand
-  sweeps across the screen (velocity-adaptive gain).
-- **Pinch-closure freeze** — when the fingers deliberately tap together, the
-  pointer holds still so the press lands where you aimed instead of drifting
-  with the motion.
-
-Rebuild with `native/build.sh`, launch with `open native/AirClick.app`.
-
-Permissions on first run: **Camera** (prompt) and **Accessibility** (System Settings →
-Privacy & Security → Accessibility → add AirClick) — without the latter macOS ignores
-injected mouse events; the HUD shows a banner until granted.
+Note that a browser page can neither move the real system pointer nor send
+trusted clicks — the web build steers a **virtual cursor inside its own page**
+and dispatches synthetic events. It's the demo of the tracking/gestures part;
+the desktop app is what actually controls your Mac.
 
 ## Web app (in-page cursor)
 
@@ -79,22 +93,11 @@ The desktop app exists to close that gap.
 - **Desktop**: single-file Swift (`native/main.swift`) on AppKit + AVCapture + Vision; no
   third-party deps; CGEvent pointer/click injection.
 
-## Pushing to your own repository
+## Repository
 
-This folder is already a git repo (branch `main`; all 28 source files committed —
-`node_modules/`, `dist/`, and the built `native/AirClick.app/` are gitignored and are
-recreated by `npm install` / `./build.sh`). To connect it to any git host — GitHub,
-GitLab, self-hosted — add your remote and push:
-
-```bash
-git remote add origin git@github.com:YOUR-USER/YOUR-REPO.git   # or an https URL
-git push -u origin main
-```
-
-The git identity here is repo-scoped (`markusmac2 <markusmac2@users.noreply.github.com>`).
-Change it for this repo only with:
-
-```bash
-git config user.name "Your Name"
-git config user.email "you@example.com"
-```
+This folder is the git repo (branch `main`, remote `origin` →
+`git@github.com:MarkusProgra/AirClick.git`; push with `git push`). `node_modules/`,
+`dist/`, and the built `native/AirClick.app/` are gitignored and recreated by
+`npm install` / `./build.sh` — the repo itself is only source. The git identity here
+is repo-scoped (`markusmac2 <markusmac2@users.noreply.github.com>`); change it for
+this repo only with `git config user.name …` / `git config user.email …`.

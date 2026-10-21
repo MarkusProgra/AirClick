@@ -5,6 +5,11 @@
 # signing pins the binary hash, so each rebuild re-breaks the grant.
 set -e
 cd "$(dirname "$0")"
+if ! xcode-select -p >/dev/null 2>&1; then
+  echo "Xcode Command Line Tools are required for the Swift compiler."
+  echo "Install them with:  xcode-select --install"
+  exit 1
+fi
 APP=AirClick.app
 IDENT="AirClick Dev"
 if ! security find-identity -p codesigning -v 2>/dev/null | grep -q "\"$IDENT\""; then
