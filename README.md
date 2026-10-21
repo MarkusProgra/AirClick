@@ -77,3 +77,23 @@ The desktop app exists to close that gap.
   with CPU fallback) for 21-point hand tracking; CSS Modules; Poppins via @fontsource.
 - **Desktop**: single-file Swift (`native/main.swift`) on AppKit + AVCapture + Vision; no
   third-party deps; CGEvent pointer/click injection.
+
+## Pushing to your own repository
+
+This folder is already a git repo (branch `main`; all 28 source files committed —
+`node_modules/`, `dist/`, and the built `native/AirClick.app/` are gitignored and are
+recreated by `npm install` / `./build.sh`). To connect it to any git host — GitHub,
+GitLab, self-hosted — add your remote and push:
+
+```bash
+git remote add origin git@github.com:YOUR-USER/YOUR-REPO.git   # or an https URL
+git push -u origin main
+```
+
+The git identity here is repo-scoped (`markusmac2 <markusmac2@users.noreply.github.com>`).
+Change it for this repo only with:
+
+```bash
+git config user.name "Your Name"
+git config user.email "you@example.com"
+```
