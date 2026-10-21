@@ -1,0 +1,168 @@
+.wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 92px 24px 130px;
+}
+
+.header {
+  width: min(880px, 100%);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.counts {
+  font-size: 13px;
+  opacity: 0.6;
+  padding: 5px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+}
+
+.grid {
+  width: min(880px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 18px;
+  min-height: 132px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  align-content: start;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sub {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  opacity: 0.55;
+}
+
+.bigBtn {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 9px 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bigBtn:hover,
+.bigBtn:global(.air-hover) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.toggleCard {
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 18px;
+  min-height: 132px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  align-content: start;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pill {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 0.15s ease;
+}
+
+.pillOn {
+  background: var(--fg);
+}
+
+.dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pillOn .dot {
+  transform: translateX(18px);
+  background: var(--bg);
+}
+
+.fakeLink {
+  font-size: 15px;
+  opacity: 0.85;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.note {
+  margin: 4px 0 0;
+  width: min(560px, 100%);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.45;
+}

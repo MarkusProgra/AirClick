@@ -1,0 +1,331 @@
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* --- Top bar ------------------------------------------------------------ */
+.topbar {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  max-width: min(92vw, 720px);
+  background: rgba(16, 16, 20, 0.78);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+
+.brand {
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.status {
+  font-size: 13px;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.separate {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn kbd {
+  margin-left: 6px;
+  opacity: 0.6;
+}
+
+/* --- Calibration overlay ------------------------------------------------ */
+.calib {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.ring {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: conic-gradient(#fff var(--p, 0%), rgba(255, 255, 255, 0.14) 0);
+  -webkit-mask: radial-gradient(closest-side, transparent 62%, #000 64%);
+  mask: radial-gradient(closest-side, transparent 62%, #000 64%);
+}
+
+.checks {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.check {
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(12, 12, 14, 0.55);
+  font-size: 12.5px;
+  color: rgba(244, 244, 246, 0.5);
+}
+
+.checkOn {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.calibHint {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+/* --- Hint chip ---------------------------------------------------------- */
+.hintChip {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  margin: 0;
+  padding: 8px 16px;
+  background: rgba(16, 16, 20, 0.78);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  font-size: 12.5px;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .hintChip {
+    white-space: normal;
+    text-align: center;
+    width: min(88vw, 460px);
+  }
+}
+
+/* --- Virtual cursor ----------------------------------------------------- */
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  z-index: 999;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.cursor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cursor:global(.is-off) {
+  opacity: 0;
+}
+
+.cursor:global(.is-pressed)::before {
+  transform: scale(0.5);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.cursor:global(.is-hot)::before {
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.14), 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.cursorDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.ripples {
+  position: fixed;
+  inset: 0;
+  z-index: 980;
+  pointer-events: none;
+}
+
+/* --- Landing ------------------------------------------------------------ */
+.landing {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 8, 10, 0.82);
+  backdrop-filter: blur(14px);
+  overflow-y: auto;
+}
+
+.card {
+  width: min(520px, 100%);
+  background: rgba(20, 20, 24, 0.72);
+  border: 1px solid var(--edge);
+  border-radius: 24px;
+  padding: 34px 32px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+.bullets {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 9px;
+  text-align: left;
+}
+
+.bullets li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  opacity: 0.8;
+  white-space: normal;
+}
+
+.bullets li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg);
+  opacity: 0.85;
+}
+
+.startBtn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 600;
+  padding: 13px 30px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.startBtn:hover {
+  transform: scale(1.03);
+}
+
+.startHint {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  opacity: 0.55;
+}
+
+.footnote {
+  margin: 10px 0 0;
+  max-width: 42ch;
+  font-size: 11.5px;
+  line-height: 1.6;
+  opacity: 0.42;
+}
+
+/* --- Camera error ------------------------------------------------------- */
+.errorBox {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  width: min(420px, 90vw);
+  background: rgba(16, 16, 20, 0.95);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.errorBox strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.errorBox p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+
+.errorActions {
+  display: flex;
+  gap: 8px;
+}

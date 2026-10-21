@@ -1,0 +1,85 @@
+:root {
+  --bg: #0a0a0c;
+  --fg: #f4f4f6;
+  --edge: rgba(255, 255, 255, 0.14);
+  --dim: rgba(244, 244, 246, 0.55);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Poppins", system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+kbd {
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  opacity: 0.55;
+}
+
+/* Hover ring added by HoverTracker (synthetic events don't run :hover). */
+.air-hover {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 3px;
+}
+
+/* Quick highlight when a target is right-clicked (menu opens). */
+.air-flash {
+  animation: airFlash 0.7s ease-out;
+}
+
+@keyframes airFlash {
+  0% {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0);
+  }
+}
+
+/* Expanding confirmation ring at each click point. */
+.air-ripple {
+  position: fixed;
+  z-index: 998;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: airRipple 0.45s ease-out forwards;
+}
+
+@keyframes airRipple {
+  from {
+    opacity: 0.9;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(4);
+  }
+}
