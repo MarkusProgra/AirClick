@@ -29,8 +29,9 @@ from **code you can read**:
 - 🖥 **Zero boundaries** — it moves the *real* system pointer, so it works
   wherever a mouse works: browsers, editors, design tools, games, menus.
 - 🔒 **Zero cloud** — no account, no telemetry, no uploads. Ever.
-- 📖 **Zero barriers** — fully open source. Clone it, build it, fork it, build
-  your own ideas on top. A new way to touch computing should be born **for everyone.**
+- 📖 **Yours to use** — free for everyone: copy it, build it, modify it, share
+  it (CC BY-NC 4.0). What's not allowed: reselling the work itself. A new way
+  to touch computing should be born **for everyone.**
 
 ## For developers — the code is the flex
 
@@ -160,3 +161,13 @@ This folder is the git repo (branch `main`, remote `origin` →
 `npm install` / `./build.sh` — the repo itself is only source. The git identity here
 is repo-scoped (`markusmac2 <markusmac2@users.noreply.github.com>`); change it for
 this repo only with `git config user.name …` / `git config user.email …`.
+
+## License & credits
+
+Made by **Markus Hoffmann** — [markushoffmann.dev](https://markushoffmann.dev) ·
+[GitHub](https://github.com/MarkusProgra).
+
+Licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
+(full legal text in [`LICENSE`](./LICENSE)) — free for anyone to **use, copy,
+modify and share**, with attribution — but **not for commercial use**: nobody
+gets to sell AirClick or derivatives of it as their own product.
