@@ -92,10 +92,10 @@ final class GestureEngine: NSObject {
   // Slow hand → tiny precise steps; fast hand → sweeps; pausing just holds
   // the pointer still. There is no anchor, so nothing can get pulled or
   // snapped anywhere, and a gain transition can never jump the pointer.
-  private let gainLow: CGFloat = 0.32
-  private let gainHigh: CGFloat = 2.6
+  private let gainLow: CGFloat = 0.36
+  private let gainHigh: CGFloat = 3.5
   private let gainV0: CGFloat = 0.15 // hand speed in normalized screen units/s
-  private let gainV1: CGFloat = 1.0
+  private let gainV1: CGFloat = 0.8  // max gain reached sooner: full screen from a small hand arc
   // A fast pinch closure (the deliberate tap) briefly freezes the pointer so
   // the press lands where you aim; slow drift and held drags never freeze.
   private let closeFreezeV: CGFloat = 0.9 // pinch-ratio units/s
@@ -593,10 +593,19 @@ final class HUDView: NSView {
     preview.videoGravity = .resizeAspectFill
     preview.session = camera.session // the live feed — without this only the backdrop shows
     preview.frame = previewClip.bounds
-    if let conn = preview.connection {
-      conn.automaticallyAdjustsVideoMirroring = false
-      conn.isVideoMirrored = true
+    // Mirror the feed so it reads like looking at a mirror: hand right →
+    // hand right on screen. The connection may not exist until the session
+    // starts, so apply it now and again when the session reports running.
+    func applyMirror() {
+      if let conn = preview.connection {
+        conn.automaticallyAdjustsVideoMirroring = false
+        conn.isVideoMirrored = true
+      }
     }
+    applyMirror()
+    NotificationCenter.default.addObserver(
+      forName: AVCaptureSession.didStartRunningNotification, object: camera.session, queue: .main
+    ) { _ in applyMirror() }
     previewClip.addSublayer(preview)
 
     overlay.frame = previewClip.bounds
