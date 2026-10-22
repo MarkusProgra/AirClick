@@ -247,7 +247,7 @@ final class GestureEngine: NSObject {
     let centered = pts.values.allSatisfy {
       $0.x >= CALIB_X0 && $0.x <= CALIB_X1 && $0.y >= CALIB_Y0 && $0.y <= CALIB_Y1
     }
-    let spread = raisedCount == 4 && thumbRatio >= 1.0
+    let spread = raisedCount >= 3 && thumbRatio >= 0.85
 
     handVisible = true
     lastSeen = now
@@ -444,7 +444,7 @@ final class GestureEngine: NSObject {
 // MARK: - Camera
 
 final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-  private let session = AVCaptureSession()
+  let session = AVCaptureSession()
   private let output = AVCaptureVideoDataOutput()
   private let engine: GestureEngine
   private let queue = DispatchQueue(label: "airclick.camera")
@@ -591,6 +591,7 @@ final class HUDView: NSView {
     backing.addSublayer(previewClip)
 
     preview.videoGravity = .resizeAspectFill
+    preview.session = camera.session // the live feed — without this only the backdrop shows
     preview.frame = previewClip.bounds
     if let conn = preview.connection {
       conn.automaticallyAdjustsVideoMirroring = false
@@ -618,6 +619,7 @@ final class HUDView: NSView {
 
     frameLayer.lineWidth = 2
     overlay.addSublayer(frameLayer)
+    frameLayer.isHidden = true // calibration shows only the circle, no box chrome
 
     let c = CGPoint(x: PREVIEW_W / 2, y: PREVIEW_H / 2)
     let ringRect = CGRect(x: c.x - 36, y: c.y - 36, width: 72, height: 72)
@@ -878,6 +880,106 @@ final class ConnectToast {
   }
 }
 
+// MARK: - Connect ripple (full-screen celebration, self-dismissing)
+//
+// A borderless, transparent, mouse-transparent window that plays one ripple
+// burst from the screen center when calibration connects: a white flash, a
+// rotating dashed ring, and three staggered expanding rings.
+
+final class ConnectRipple {
+  private var panel: NSPanel!
+  private let host = NSView()
+
+  func show() {
+    if panel == nil {
+      let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+      panel = NSPanel(contentRect: screen, styleMask: [.borderless, .nonactivatingPanel],
+                      backing: .buffered, defer: false)
+      panel.level = .screenSaver
+      panel.isOpaque = false
+      panel.backgroundColor = .clear
+      panel.ignoresMouseEvents = true
+      panel.hasShadow = false
+      panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+      panel.isReleasedWhenClosed = false
+      host.wantsLayer = true
+      panel.contentView = host
+    }
+    playRipple()
+    panel.orderFrontRegardless()
+    panel.alphaValue = 1
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in
+      self?.panel?.orderOut(nil) // popups must self-dismiss
+    }
+    probe("ripple")
+  }
+
+  private func playRipple() {
+    guard let root = host.layer, let panel = panel else { return }
+    root.sublayers?.forEach { $0.removeFromSuperlayer() }
+    let c = CGPoint(x: panel.frame.width / 2, y: panel.frame.height / 2)
+    let scale = NSScreen.main?.backingScaleFactor ?? 2
+
+    // A ring centered at `c`; its scale animation grows it around its anchor.
+    // `scaleTo` = grow factor, `alpha` = starting opacity.
+    @discardableResult
+    func ring(_ radius: CGFloat, lineWidth: CGFloat, scaleTo: CGFloat,
+              alpha: CGFloat, delay: Double, spin: CGFloat = 0,
+              dash: [CGFloat]? = nil, filled: Bool = false) -> CAShapeLayer {
+      let l = CAShapeLayer()
+      l.bounds = CGRect(x: 0, y: 0, width: radius * 2, height: radius * 2)
+      l.position = c
+      l.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+      if filled {
+        l.fillColor = NSColor.white.cgColor
+        l.strokeColor = NSColor.clear.cgColor
+      } else {
+        l.fillColor = NSColor.clear.cgColor
+        l.strokeColor = NSColor.white.cgColor
+        l.lineWidth = lineWidth
+        l.lineCap = .round
+      }
+      l.path = CGPath(ellipseIn: l.bounds, transform: nil)
+      l.lineDashPattern = dash.map { $0.map { NSNumber(value: Float($0)) } }
+      l.opacity = 0
+      l.contentsScale = scale
+      root.addSublayer(l)
+
+      let grow = CABasicAnimation(keyPath: "transform.scale")
+      grow.fromValue = 1
+      grow.toValue = scaleTo
+      let out = CABasicAnimation(keyPath: "opacity")
+      out.fromValue = alpha
+      out.toValue = 0
+      var anims: [CAAnimation] = [grow, out]
+      if spin != 0 {
+        let s = CABasicAnimation(keyPath: "transform.rotation.z")
+        s.fromValue = 0
+        s.toValue = spin
+        anims.append(s)
+      }
+      let group = CAAnimationGroup()
+      group.animations = anims
+      group.duration = 1.2
+      group.timingFunction = CAMediaTimingFunction(name: .easeOut)
+      group.beginTime = CACurrentMediaTime() + delay
+      group.fillMode = .forwards
+      l.add(group, forKey: "ripple")
+      return l
+    }
+
+    // White flash at the center…
+    ring(13, lineWidth: 0, scaleTo: 1.6, alpha: 0.95, delay: 0.02, filled: true)
+    // …a tight dashed ring that spins as it unwinds ("the code ripple")…
+    ring(9, lineWidth: 3, scaleTo: 30, alpha: 0.85, delay: 0.02,
+         spin: 0.9, dash: [13, 11])
+    // …and three staggered sweep rings crossing the screen.
+    ring(44, lineWidth: 5, scaleTo: 22, alpha: 0.9, delay: 0.10)
+    ring(44, lineWidth: 3, scaleTo: 15, alpha: 0.5, delay: 0.26)
+    ring(44, lineWidth: 2, scaleTo: 10, alpha: 0.3, delay: 0.44)
+  }
+}
+
 // MARK: - App wiring
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -887,6 +989,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   var panel: HUDPanel!
   var statusItem: NSStatusItem!
   private let toast = ConnectToast()
+  private let ripple = ConnectRipple()
 
   override init() {
     super.init()
@@ -927,10 +1030,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     engine.onConnected = { [weak self] in
       guard let self else { return }
+      self.ripple.show()
       self.toast.show(trusted: self.engine.trusted)
     }
 
     setupStatusItem()
+
+    // ⌘1 = rescue hatch: teleport the pointer back to the center of the
+    // screen. Global monitor catches it while other apps are key; the local
+    // monitor also consumes it so the frontmost app doesn't react to it too.
+    NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      guard let self, event.keyCode == 18, // the "1" key
+            event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) else { return }
+      self.engine.recenter()
+    }
+    NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      guard let self, event.keyCode == 18,
+            event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
+            self.engine.phase == .active else { return event }
+      self.engine.recenter()
+      return nil // consumed
+    }
 
     // Ask once, the standard way — the dialog includes Open System Settings / Deny
     // and dismisses normally. Until trusted the panel sits at normal level so it
@@ -950,6 +1070,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.engine.setTrusted(t)
         self.panel.level = t ? .floating : .normal
         if t, self.engine.phase == .active {
+          self.ripple.show()
           self.toast.show(trusted: true) // the real "Connected!" when trust lands
         }
       }
