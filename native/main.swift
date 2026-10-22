@@ -87,28 +87,27 @@ final class GestureEngine: NSObject {
   private var lastBeat: Double = 0
   private var moveCount = 0
 
-  // Pointer feel, mouse-style (relative): each frame the hand's movement is
-  // scaled by a speed-dependent gain and added to wherever the pointer is.
-  // Slow hand → tiny precise steps; fast hand → sweeps; pausing just holds
-  // the pointer still. There is no anchor, so nothing can get pulled or
-  // snapped anywhere, and a gain transition can never jump the pointer.
-  private let gainLow: CGFloat = 0.36
-  private let gainHigh: CGFloat = 3.5
-  private let gainV0: CGFloat = 0.15 // hand speed in normalized screen units/s
-  private let gainV1: CGFloat = 0.8  // max gain reached sooner: full screen from a small hand arc
+  // Pointer feel, absolute: the hand's position inside the camera frame IS
+  // the pointer's position on the screen, 1:1. Where your hand is, the
+  // cursor is — pausing holds it exactly still, and every screen edge is
+  // reachable because the map never runs out of hand travel. The insets
+  // shave a slim margin off the outer camera frame where joint tracking is
+  // unreliable, so the last camera pixels never have to be reached (and
+  // reaching a screen edge never demands the very edge of the frame).
+  private let insetX: CGFloat = 0.045   // camera-frame margin, horizontal
+  private let insetY: CGFloat = 0.055   // camera-frame margin, vertical
+  private let mapEase: CGFloat = 0.45   // EMA toward the mapped target per frame
   // A fast pinch closure (the deliberate tap) briefly freezes the pointer so
   // the press lands where you aim; slow drift and held drags never freeze.
   private let closeFreezeV: CGFloat = 0.9 // pinch-ratio units/s
   private let closeNear: CGFloat = 0.52   // fast closure counts inside this band
   private let freezeMs: Double = 120
 
-  private var velSm: CGFloat?
-  private var lastCursor: CGPoint?
   private var lPinchPrev: CGFloat?
   private var rPinchPrev: CGFloat?
   private var freezeUntil: Double = 0
 
-  private let dead: CGFloat = 0.6 // min step (px) that suppresses idle jitter
+  private let dead: CGFloat = 2.5 // min step (px) that suppresses idle jitter
   // Click needs a near-full close; hold-drag keeps it closed, open releases.
   private let pinchOn: CGFloat = 0.28
   private let pinchOff: CGFloat = 0.54
@@ -164,19 +163,6 @@ final class GestureEngine: NSObject {
     progress = 0
     smoothX = nil
     smoothY = nil
-    notifyFrame()
-  }
-
-  /// Rescue hatch: teleport the pointer back to the exact center of the
-  /// screen (relative motion has no anchor, so runaway drift is corrected
-  /// only by moving the hand — this gives an instant way back).
-  func recenter() {
-    guard phase == .active else { return }
-    let b = CGDisplayBounds(CGMainDisplayID())
-    smoothX = b.midX
-    smoothY = b.midY
-    postMove()
-    probe("recenter")
     notifyFrame()
   }
 
@@ -280,11 +266,9 @@ final class GestureEngine: NSObject {
       }
       if okAcc >= holdMs {
         phase = .active
-        smoothX = nil
+        smoothX = nil // the pointer appears wherever the hand is
         smoothY = nil
         moveCount = 0
-        velSm = nil
-        lastCursor = cursor
         lPinchPrev = nil
         rPinchPrev = nil
         freezeUntil = 0
@@ -299,17 +283,6 @@ final class GestureEngine: NSObject {
       let dtA = lastFrameMs > 0 ? min(100, max(5, now - lastFrameMs)) : 16
       let lPinch = dist(thumbTip, idxTip) / palm
       let rPinch = dist(thumbTip, midTip) / palm
-
-      // Hand movement this frame, captured before lastCursor is updated.
-      let handDx = lastCursor != nil ? cursor.x - lastCursor!.x : 0
-      let handDy = lastCursor != nil ? cursor.y - lastCursor!.y : 0
-
-      // Hand speed (normalized units/s), smoothed — drives the gain curve.
-      if let last = lastCursor {
-        let v = dist(cursor, last) / dtA * 1000
-        velSm = velSm == nil ? v : velSm! + (v - velSm!) * 0.35
-      }
-      lastCursor = cursor
 
       // Freeze during a fast pinch closure (pre-press only): the tips are
       // flying together, so the pointer holds still and the press lands
@@ -327,21 +300,22 @@ final class GestureEngine: NSObject {
       let frozen = now < freezeUntil
 
       if !frozen {
-        // Mouse-style relative motion: scale just this frame's hand movement
-        // by the adaptive gain (slow hand → micro-steps, fast hand → sweeps)
-        // and add it to wherever the pointer already is. No anchor — pausing
-        // holds the pointer exactly still.
+        // Absolute motion: the hand's position inside the camera frame maps
+        // onto the whole screen, with the unreliable outer edge of the frame
+        // shaved off as a margin. No gain curve, no accumulation — pausing
+        // holds the pointer at the hand's spot, and every edge is reachable
+        // by simply moving there (a screen edge needs only the frame edge
+        // minus the margin, never the last camera pixel).
         if smoothX == nil || smoothY == nil {
           smoothX = b.midX
           smoothY = b.midY
         }
-        let t = min(1, max(0, ((velSm ?? 0) - gainV0) / (gainV1 - gainV0)))
-        let easing = t * t * (3 - 2 * t)
-        let g = gainLow + easing * (gainHigh - gainLow)
-        let tx = smoothX! + handDx * b.width * g
-        let ty = smoothY! + handDy * b.height * g
-        let cx = min(max(0, tx), b.width - 1)
-        let cy = min(max(0, ty), b.height - 1)
+        let tx = (cursor.x - insetX) / (1 - insetX * 2) * b.width
+        let ty = (cursor.y - insetY) / (1 - insetY * 2) * b.height
+        let ex = min(max(0, tx), b.width - 1)
+        let ey = min(max(0, ty), b.height - 1)
+        let cx = min(b.width - 1, max(0, smoothX! + (ex - smoothX!) * mapEase))
+        let cy = min(b.height - 1, max(0, smoothY! + (ey - smoothY!) * mapEase))
         if abs(cx - smoothX!) > dead || abs(cy - smoothY!) > dead {
           smoothX = cx
           smoothY = cy
@@ -392,10 +366,9 @@ final class GestureEngine: NSObject {
   private func lost(_ now: Double) {
     if now - lastSeen > handLostMs || lastSeen == 0 {
       releaseButtons() // never leave the real mouse button stuck down
-      smoothX = nil
-      smoothY = nil
-      velSm = nil
-      lastCursor = nil
+      // smoothX/Y are kept: with absolute mapping they point at where the
+      // hand was, so a re-entering hand glides the cursor back — nothing
+      // teleports from screen center.
       lPinchPrev = nil
       rPinchPrev = nil
       freezeUntil = 0
@@ -512,6 +485,7 @@ final class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
 private let PANEL_W: CGFloat = 320
 private let PANEL_H: CGFloat = 412
+private let PANEL_H_COMPACT: CGFloat = 172 // active: camera hidden, controls only
 private let PAD: CGFloat = 14
 private let PREVIEW_W: CGFloat = 292
 private let PREVIEW_H: CGFloat = 219 // 4:3, matches the vga640x480 preset
@@ -526,6 +500,16 @@ final class HUDView: NSView {
   private let camera: CameraManager
   /// Set by the owner: hides the HUD panel.
   var onHide: (() -> Void)?
+  /// Set by the owner: resizes the panel window when the layout compacts.
+  var onPanelHeight: ((CGFloat) -> Void)?
+
+  private var compact = false
+  private var panelH: CGFloat = PANEL_H
+  // Top-edge offsets of the two layouts (full: camera visible; compact:
+  // active — camera hidden). Bottom-out offsets are derived via yTop().
+  private var statusY: CGFloat { compact ? 50 : 299 }
+  private var recalY: CGFloat { compact ? 92 : 340 }
+  private var bannerY: CGFloat { compact ? 128 : 372 }
 
   private let previewClip = CALayer()
   private let preview = AVCaptureVideoPreviewLayer()
@@ -544,7 +528,6 @@ final class HUDView: NSView {
   private var bannerButton: NSButton!
   private var closeButton: NSButton!
   private var recalButton: NSButton!
-  private var centerButton: NSButton!
 
   init(engine: GestureEngine, camera: CameraManager) {
     self.engine = engine
@@ -561,7 +544,22 @@ final class HUDView: NSView {
 
   // Layer coordinates are bottom-left; convert from a top-edge offset.
   private func yTop(_ top: CGFloat, _ h: CGFloat) -> CGFloat {
-    PANEL_H - top - h
+    panelH - top - h
+  }
+
+  /// Reflows every layer for the current layout (full vs compact). The panel
+  /// window itself is resized through onPanelHeight.
+  private func applyLayout() {
+    previewClip.frame = CGRect(x: PAD, y: yTop(44, PREVIEW_H), width: PREVIEW_W, height: PREVIEW_H)
+    preview.frame = previewClip.bounds
+    overlay.frame = previewClip.bounds
+    statusText.frame = CGRect(x: PAD, y: yTop(statusY, 36), width: PREVIEW_W, height: 36)
+    chipHand.frame = CGRect(x: PAD, y: yTop(271, 20), width: 92, height: 20)
+    chipCentered.frame = CGRect(x: PAD + 100, y: yTop(271, 20), width: 92, height: 20)
+    chipSpread.frame = CGRect(x: PAD + 200, y: yTop(271, 20), width: 92, height: 20)
+    recalButton?.setFrameOrigin(NSPoint(x: PAD, y: yTop(engine.trusted ? bannerY : recalY, 28)))
+    bannerButton?.setFrameOrigin(NSPoint(x: PAD, y: yTop(bannerY, 28)))
+    onPanelHeight?(panelH)
   }
 
   private func setupLayers() {
@@ -677,7 +675,6 @@ final class HUDView: NSView {
 
   private func setupButtons() {
     recalButton = makeButton("Recalibrate", width: 140, x: PAD, y: 340, action: #selector(didRecalibrate))
-    centerButton = makeButton("Re-center", width: 140, x: PAD + 152, y: 340, action: #selector(didRecenter))
     bannerButton = makeButton("Open System Settings", width: PREVIEW_W, x: PAD, y: 372,
                               action: #selector(didOpenSettings))
     closeButton = makeButton("✕", width: 28, x: PANEL_W - PAD - 28, y: 10, action: #selector(didClose))
@@ -696,10 +693,6 @@ final class HUDView: NSView {
 
   @objc private func didRecalibrate() {
     engine.recalibrate()
-  }
-
-  @objc private func didRecenter() {
-    engine.recenter()
   }
 
   @objc private func didOpenSettings() {
@@ -735,10 +728,20 @@ final class HUDView: NSView {
     }()
 
     bannerButton.isHidden = engine.trusted
-    let by: CGFloat = engine.trusted ? 372 : 340
-    for b: NSButton in [recalButton!, centerButton!] {
-      b.setFrameOrigin(NSPoint(x: b.frame.origin.x, y: yTop(by, 28)))
+    let by: CGFloat = engine.trusted ? bannerY : recalY
+    recalButton.setFrameOrigin(NSPoint(x: recalButton.frame.origin.x, y: yTop(by, 28)))
+    bannerButton.setFrameOrigin(NSPoint(x: PAD, y: yTop(bannerY, 28)))
+
+    // Active = compact: the camera hides (you don't need to watch yourself
+    // while it watches you) and the panel shrinks to title/status/buttons.
+    let nowCompact = engine.phase == .active
+    if nowCompact != compact {
+      compact = nowCompact
+      panelH = compact ? PANEL_H_COMPACT : PANEL_H
+      applyLayout()
     }
+    previewClip.isHidden = compact
+    for c in [chipHand, chipCentered, chipSpread] { c.isHidden = compact }
 
     let chips = [(chipHand, engine.checks.hand), (chipCentered, engine.checks.centered),
                  (chipSpread, engine.checks.spread)]
@@ -892,8 +895,9 @@ final class ConnectToast {
 // MARK: - Connect ripple (full-screen celebration, self-dismissing)
 //
 // A borderless, transparent, mouse-transparent window that plays one ripple
-// burst from the screen center when calibration connects: a white flash, a
-// rotating dashed ring, and three staggered expanding rings.
+// burst from the screen center when calibration connects: a white flash, two
+// counter-rotating dashed rings, a six-ring wavefront sweeping to every edge,
+// and fourteen radial ticks firing outward around it.
 
 final class ConnectRipple {
   private var panel: NSPanel!
@@ -977,15 +981,60 @@ final class ConnectRipple {
       return l
     }
 
+    // Radial ticks: short lines shooting straight outward all around, riding
+    // the wavefront. The wrapper holds a static rotation, so the tick's
+    // flight path in wrapper space is always straight along one axis; the
+    // rotation angles are spread over a full turn, so together they cover
+    // every direction exactly once.
+    func tick(angle: Double, delay: Double) {
+      let wrapper = CALayer()
+      wrapper.bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
+      wrapper.position = c
+      wrapper.transform = CATransform3DMakeRotation(CGFloat(angle), 0, 0, 1)
+      root.addSublayer(wrapper)
+
+      let line = CAShapeLayer()
+      line.bounds = CGRect(x: 0, y: 0, width: 4, height: 20)
+      line.cornerRadius = 2
+      line.path = CGPath(roundedRect: line.bounds, cornerWidth: 2, cornerHeight: 2, transform: nil)
+      line.fillColor = NSColor.white.cgColor
+      line.contentsScale = scale
+      line.opacity = 0 // model stays invisible; only the animation shows it
+      line.position = CGPoint(x: 0.5, y: 0.5) // wrapper center
+      wrapper.addSublayer(line)
+
+      let fly = CABasicAnimation(keyPath: "position")
+      fly.fromValue = NSValue(point: CGPoint(x: 0.5, y: 0.5))
+      fly.toValue = NSValue(point: CGPoint(x: 0.5, y: 0.5 - (hypot(c.x, c.y) + 30))) // past every edge, window clips it
+      let out = CABasicAnimation(keyPath: "opacity")
+      out.fromValue = 0.9
+      out.toValue = 0
+      let group = CAAnimationGroup()
+      group.animations = [fly, out]
+      group.duration = 0.85
+      group.timingFunction = CAMediaTimingFunction(name: .easeOut)
+      group.beginTime = CACurrentMediaTime() + delay
+      group.fillMode = .forwards
+      line.add(group, forKey: "tick")
+    }
+
     // White flash at the center…
     ring(13, lineWidth: 0, scaleTo: 1.6, alpha: 0.95, delay: 0.02, filled: true)
-    // …a tight dashed ring that spins as it unwinds ("the code ripple")…
-    ring(9, lineWidth: 3, scaleTo: 30, alpha: 0.85, delay: 0.02,
-         spin: 0.9, dash: [13, 11])
-    // …and three staggered sweep rings crossing the screen.
-    ring(44, lineWidth: 5, scaleTo: 22, alpha: 0.9, delay: 0.10)
-    ring(44, lineWidth: 3, scaleTo: 15, alpha: 0.5, delay: 0.26)
-    ring(44, lineWidth: 2, scaleTo: 10, alpha: 0.3, delay: 0.44)
+    // …two dashed rings spinning opposite ways as the wave passes them…
+    ring(9, lineWidth: 3, scaleTo: 30, alpha: 0.9, delay: 0.02, spin: 0.9, dash: [13, 11])
+    ring(9, lineWidth: 2, scaleTo: 22, alpha: 0.65, delay: 0.16, spin: -0.7, dash: [4, 9])
+    // …a tight wavefront: six rings leaving 70 ms apart, each thinner and
+    // reaching farther than the one before — a shock front, not a single wave…
+    ring(44, lineWidth: 6, scaleTo: 24, alpha: 0.92, delay: 0.06)
+    ring(44, lineWidth: 5, scaleTo: 21, alpha: 0.8, delay: 0.13)
+    ring(44, lineWidth: 4, scaleTo: 18, alpha: 0.68, delay: 0.20)
+    ring(44, lineWidth: 3, scaleTo: 15, alpha: 0.55, delay: 0.27)
+    ring(44, lineWidth: 2.5, scaleTo: 12, alpha: 0.4, delay: 0.34)
+    ring(44, lineWidth: 2, scaleTo: 9, alpha: 0.28, delay: 0.41)
+    // …and the ticks flying outward in three quick sub-waves.
+    for i in 0..<14 {
+      tick(angle: Double(i) / 14 * 2 * Double.pi, delay: 0.10 + Double(i % 3) * 0.05)
+    }
   }
 }
 
@@ -1029,6 +1078,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       panel.setFrameOrigin(NSPoint(x: screen.maxX - PANEL_W - 24, y: screen.minY + 70))
     }
     hud.onHide = { [weak panel] in panel?.orderOut(nil) }
+    // The active phase compacts the layout; grow upward so the panel's top
+    // edge (and everything it was aligned with) doesn't slide down.
+    hud.onPanelHeight = { [weak self] h in
+      guard let self, let panel = self.panel else { return }
+      var f = panel.frame
+      f.origin.y += f.height - h
+      f.size.height = h
+      panel.setFrame(f, display: true)
+    }
     panel.orderFrontRegardless()
     FileHandle.standardError.write(Data(
       "[AirClick] panel ordered front — visible: \(panel.isVisible) frame: \(panel.frame)\n".utf8
@@ -1044,22 +1102,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     setupStatusItem()
-
-    // ⌘1 = rescue hatch: teleport the pointer back to the center of the
-    // screen. Global monitor catches it while other apps are key; the local
-    // monitor also consumes it so the frontmost app doesn't react to it too.
-    NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      guard let self, event.keyCode == 18, // the "1" key
-            event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) else { return }
-      self.engine.recenter()
-    }
-    NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      guard let self, event.keyCode == 18,
-            event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
-            self.engine.phase == .active else { return event }
-      self.engine.recenter()
-      return nil // consumed
-    }
 
     // Ask once, the standard way — the dialog includes Open System Settings / Deny
     // and dismisses normally. Until trusted the panel sits at normal level so it
@@ -1109,8 +1151,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                  action: #selector(togglePanel), keyEquivalent: "h")
     menu.addItem(withTitle: "Restart camera & recalibrate",
                  action: #selector(restartCamera), keyEquivalent: "r")
-    menu.addItem(withTitle: "Re-center cursor",
-                 action: #selector(recenterNow), keyEquivalent: "c")
     menu.addItem(.separator())
     menu.addItem(withTitle: "Quit AirClick",
                  action: #selector(quitApp), keyEquivalent: "q")
@@ -1133,10 +1173,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   @objc private func restartCamera() {
     camera.start()
     engine.recalibrate()
-  }
-
-  @objc private func recenterNow() {
-    engine.recenter()
   }
 
   @objc private func quitApp() {

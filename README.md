@@ -45,10 +45,14 @@ that actually took the work:
   width (hand size- and distance-to-camera invariant), with hysteresis
   (0.28 ↔ 0.54), transition debounce and button **mutual exclusion**, so a
   jittery hand can't chatter clicks or crossfire right-presses mid-drag.
-- **Mouse physics, reimplemented** — pointer motion is integrated frame by
-  frame (mouse-style relative), each step scaled by a smoothstep gain curve
-  over the hand's smoothed velocity (0.32× in fine mode → 2.6× sweep). No
-  anchors, no snapping: pausing holds the pointer *perfectly* still.
+- **Absolute pointer mapping** — the hand's position inside the camera frame
+  *is* the cursor's position on screen, mapped 1:1 with a slim margin shaved
+  off the unreliable outer frame edge. Where your hand is, the pointer is:
+  no gain curve, no accumulator, nothing to drift — pausing rests exactly,
+  and every screen edge is reachable because the map never runs out of hand
+  travel (a screen edge only needs the frame edge minus the margin, never the
+  last camera pixel). An exponential smoother plus a 2.5 px dead band absorb
+  tracking jitter.
 - **The tap-freeze** — a closure-velocity detector notices a deliberate
   pinch tap and freezes the cursor for that instant, so the press lands
   exactly where you aimed. The press is still evaluated during the freeze.
@@ -90,12 +94,13 @@ No Xcode? macOS will offer to install the tools on first compile, or run
 - **Pinch thumb + middle** — right press/drag/release, same hold mechanic.
 - The cursor sits at the **pinch point** (midway between thumb and index tip),
   so pinching never shifts it.
-- **Pointer feel** — a slow hand (fine mode) moves the pointer only a fraction,
-  for precise aiming; a fast hand sweeps across the whole screen.
+- **Pointer feel** — *absolute*: the camera frame maps onto the screen, so
+  reaching a corner is just moving your hand there. Moving the hand holds the
+  cursor at its spot; nothing drifts and nothing can get "out of range".
 - **Tap freeze** — when your fingers deliberately tap together, the pointer
   holds still for that moment, so the press lands exactly where you aimed.
-- Menu-bar panel: Recalibrate / Re-center / Show; Re-center teleports the
-  pointer to screen center if you need a rescue.
+- Menu-bar panel: Recalibrate / Show. When AirClick is active the panel
+  compacts (the camera preview hides) — recalibrate to bring it back full.
 
 **Make the grant permanent (optional, once):**
 
