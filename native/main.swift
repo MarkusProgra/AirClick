@@ -87,15 +87,14 @@ final class GestureEngine: NSObject {
   private var lastBeat: Double = 0
   private var moveCount = 0
 
-  // Pointer feel, absolute: the hand's position inside the camera frame IS
-  // the pointer's position on the screen, 1:1. Where your hand is, the
-  // cursor is — pausing holds it exactly still, and every screen edge is
-  // reachable because the map never runs out of hand travel. The insets
-  // shave a slim margin off the outer camera frame where joint tracking is
-  // unreliable, so the last camera pixels never have to be reached (and
-  // reaching a screen edge never demands the very edge of the frame).
-  private let insetX: CGFloat = 0.045   // camera-frame margin, horizontal
-  private let insetY: CGFloat = 0.055   // camera-frame margin, vertical
+  // Pointer feel, absolute: the screen maps onto the CENTERED 60% of the
+  // camera frame — a small hand arc sweeps the whole screen, and every
+  // border stays reachable because the outer frame edge never has to be
+  // reached (the last 20% on each side of the view is dead margin; joint
+  // tracking is least reliable there anyway). Where your hand is inside
+  // that window, the cursor is. Pausing holds it exactly still.
+  private let insetX: CGFloat = 0.20 // camera-frame margin, horizontal
+  private let insetY: CGFloat = 0.20 // camera-frame margin, vertical
   private let mapEase: CGFloat = 0.45   // EMA toward the mapped target per frame
   // A fast pinch closure (the deliberate tap) briefly freezes the pointer so
   // the press lands where you aim; slow drift and held drags never freeze.
@@ -108,8 +107,11 @@ final class GestureEngine: NSObject {
   private var freezeUntil: Double = 0
 
   private let dead: CGFloat = 2.5 // min step (px) that suppresses idle jitter
-  // Click needs a near-full close; hold-drag keeps it closed, open releases.
-  private let pinchOn: CGFloat = 0.28
+  // Click only when the fingertips REALLY touch: the Vision landmark centers
+  // of pressed pads sit ~0.15–0.20 of palm apart, while a relaxed hand
+  // hovering kinda-close sits at 0.25+ — this gate ignores the hover zone.
+  // Once pressed, stay-pressed is roomier (see pinchOff); open to release.
+  private let pinchOn: CGFloat = 0.18
   private let pinchOff: CGFloat = 0.54
   private let tapCooldown: Double = 250
   private let handLostMs: Double = 1200
@@ -300,12 +302,10 @@ final class GestureEngine: NSObject {
       let frozen = now < freezeUntil
 
       if !frozen {
-        // Absolute motion: the hand's position inside the camera frame maps
-        // onto the whole screen, with the unreliable outer edge of the frame
-        // shaved off as a margin. No gain curve, no accumulation — pausing
-        // holds the pointer at the hand's spot, and every edge is reachable
-        // by simply moving there (a screen edge needs only the frame edge
-        // minus the margin, never the last camera pixel).
+        // Absolute motion: the screen maps onto the centered 60% of the
+        // camera frame. No gain curve, no accumulation — pausing holds the
+        // pointer at the hand's spot, every edge is reachable, and a full
+        // sweep takes only a small hand arc.
         if smoothX == nil || smoothY == nil {
           smoothX = b.midX
           smoothY = b.midY

@@ -43,16 +43,17 @@ that actually took the work:
 
 - **Pinch detection done statistically** — distances are ratios to the palm
   width (hand size- and distance-to-camera invariant), with hysteresis
-  (0.28 ↔ 0.54), transition debounce and button **mutual exclusion**, so a
-  jittery hand can't chatter clicks or crossfire right-presses mid-drag.
-- **Absolute pointer mapping** — the hand's position inside the camera frame
-  *is* the cursor's position on screen, mapped 1:1 with a slim margin shaved
-  off the unreliable outer frame edge. Where your hand is, the pointer is:
-  no gain curve, no accumulator, nothing to drift — pausing rests exactly,
-  and every screen edge is reachable because the map never runs out of hand
-  travel (a screen edge only needs the frame edge minus the margin, never the
-  last camera pixel). An exponential smoother plus a 2.5 px dead band absorb
-  tracking jitter.
+  (touch 0.18 ↔ release 0.54), transition debounce and button **mutual
+  exclusion**, so a jittery hand can't chatter clicks or crossfire
+  right-presses mid-drag. Click needs the fingertips **actually touching**
+  — well below the relaxed-hand hover zone — so a lazy hand can't fire
+  phantom clicks.
+- **Absolute pointer mapping** — the cursor sweeps the whole screen while
+  your hand travels the **central 60% of the camera's view**: a small arc,
+  every border reachable, and the unreliable outer frame edge never enters
+  the math. Where your hand is inside that window, the pointer is — no gain
+  curve, no accumulator, nothing to drift, so pausing rests exactly. An
+  exponential smoother plus a 2.5 px dead band absorb tracking jitter.
 - **The tap-freeze** — a closure-velocity detector notices a deliberate
   pinch tap and freezes the cursor for that instant, so the press lands
   exactly where you aimed. The press is still evaluated during the freeze.
