@@ -2,11 +2,6 @@
 
 <div align="center">
 
-<video width="320" height="240" controls>
-  <source src="assets/AirClick_Launch_Film_1080p60_finals.mp4">
-  Your browser does not support the video tag.
-</video>
-
 <img src="assets/icon.png" width="128" alt="AirClick icon" />
 
 ### The next input revolution isn't on a screen — it's in the air.
